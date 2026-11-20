@@ -52,6 +52,10 @@ This puts **Lyrics Overlay** in `/Applications` and opens it. A setup guide walk
 browser extension (Zen, or Firefox 140 or newer) and playing your first song. To remove everything:
 `curl -fsSL https://raw.githubusercontent.com/iwandepe/lyrics-overlay/main/install.sh | bash -s -- --uninstall`
 
+Installing the extension by hand: download `lyrics-overlay-bridge.xpi` from the
+[latest release](https://github.com/iwandepe/lyrics-overlay/releases/latest), then in Zen or Firefox open
+Add-ons → ⚙ → **Install Add-on From File…**.
+
 The app isn't notarized by Apple (that needs a paid developer account), which is why it's installed with
 `curl`: files downloaded that way aren't blocked by Gatekeeper. Read `install.sh` first if you like; it's short.
 

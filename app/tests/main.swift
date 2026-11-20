@@ -111,5 +111,54 @@ eq(UpdateVerifier.verify(payload, signatureBase64: other, publicKeyBase64: pub),
 eq(UpdateVerifier.verify(payload, signatureBase64: "not base64!!", publicKeyBase64: pub), false)
 eq(UpdateVerifier.verify(payload, signatureBase64: goodSig), false, "a stranger's signature fails against the embedded key")
 
+
+// Extension download (stubbed network)
+final class StubProtocol: URLProtocol {
+    nonisolated(unsafe) static var reply: (Int, Data) = (200, Data())
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for r: URLRequest) -> URLRequest { r }
+    override func startLoading() {
+        let (code, data) = Self.reply
+        let resp = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
+}
+func blocking<T>(_ work: @escaping () async -> T) -> T {
+    let sem = DispatchSemaphore(value: 0); var out: T!
+    Task.detached { out = await work(); sem.signal() }
+    sem.wait(); return out
+}
+let stubCfg = URLSessionConfiguration.ephemeral; stubCfg.protocolClasses = [StubProtocol.self]
+let stubSession = URLSession(configuration: stubCfg)
+let extDir = NSTemporaryDirectory() + "lyrics-ext-\(UUID().uuidString)"
+setenv("LYRICS_DATA_DIR", extDir, 1)
+let xpiURL = URL(string: "https://github.com/o/r/releases/latest/download/lyrics-overlay-bridge.xpi")!
+let goodXPI = Data([0x50, 0x4B, 0x03, 0x04]) + Data(repeating: 7, count: 400)
+
+func fetch(_ code: Int, _ body: Data, url: URL = xpiURL) -> (URL?, String?) {
+    StubProtocol.reply = (code, body)
+    return blocking {
+        do { return (try await ExtensionFile.download(from: url, session: stubSession), nil) }
+        catch { return (nil, error.localizedDescription) }
+    }
+}
+
+eq(ExtensionFile.isPlausible(goodXPI), true)
+eq(ExtensionFile.isPlausible(Data("<html>Not Found</html>".utf8) + Data(repeating: 32, count: 300)), false, "html is not a zip")
+eq(ExtensionFile.isPlausible(Data([0x50, 0x4B, 0x03, 0x04])), false, "too small")
+
+let ok = fetch(200, goodXPI)
+eq(ok.0?.lastPathComponent, "lyrics-overlay-bridge.xpi")
+eq((try? Data(contentsOf: ExtensionFile.localURL)) == goodXPI, true, "saved bytes match")
+eq(fetch(404, Data()).1?.contains("hasn't been published") ?? false, true, "404 explains it's not published")
+eq(fetch(500, Data()).1?.contains("HTTP 500") ?? false, true)
+eq(fetch(200, Data("<html>oops</html>".utf8) + Data(repeating: 32, count: 300)).1?.contains("isn't a valid") ?? false, true)
+eq((try? Data(contentsOf: ExtensionFile.localURL)) == goodXPI, true, "a bad download never overwrites a good saved copy")
+eq(fetch(200, goodXPI, url: URL(string: "http://evil.example/x.xpi")!).1?.contains("Refusing") ?? false, true, "plain http refused")
+try? FileManager.default.removeItem(atPath: extDir)
+
 print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
 exit(failures == 0 ? 0 : 1)

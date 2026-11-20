@@ -10,7 +10,7 @@ enum SyncMath {
 
 /// Per-song sync corrections, saved as readable JSON at
 /// ~/Library/Application Support/LyricsOverlay/sync-offsets.json
-/// (override the folder with LYRICS_DATA_DIR, used by tests).
+/// (see Config.dataDirectory).
 final class SyncStore {
     private struct Entry: Codable {
         var offset: Double
@@ -22,13 +22,7 @@ final class SyncStore {
 
     init() {
         let fm = FileManager.default
-        let dir: URL
-        if let custom = ProcessInfo.processInfo.environment["LYRICS_DATA_DIR"] {
-            dir = URL(fileURLWithPath: custom, isDirectory: true)
-        } else {
-            dir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("LyricsOverlay", isDirectory: true)
-        }
+        let dir = Config.dataDirectory
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         url = dir.appendingPathComponent("sync-offsets.json")
 

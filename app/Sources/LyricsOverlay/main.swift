@@ -74,6 +74,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
+        if ProcessInfo.processInfo.environment["LYRICS_INSTALL_EXTENSION_NOW"] != nil {   // tests: run the installer without the UI
+            ExtensionInstaller.install { result in
+                if case .failure(let f) = result { print("[extension] failed: \(f.message)") }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { NSApp.terminate(nil) }
+            }
+        }
+
         if let path = ProcessInfo.processInfo.environment["LYRICS_ONBOARD_SNAPSHOT"] {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 self?.onboarding.snapshot(to: path)

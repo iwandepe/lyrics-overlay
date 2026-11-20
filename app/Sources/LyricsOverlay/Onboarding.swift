@@ -13,23 +13,65 @@ enum LoginItem {
 }
 
 enum ExtensionInstaller {
-    /// Opens the signed extension in Zen if installed, otherwise Firefox, otherwise the default browser.
-    static func open() {
+    private static let browserIDs = ["app.zen-browser.zen", "org.mozilla.firefox", "org.mozilla.firefoxdeveloperedition"]
+
+    /// Downloads the signed extension and opens the saved file in Zen (else Firefox). The browser shows its own
+    /// "Add extension?" prompt. Opening a local file works regardless of how GitHub serves the download.
+    static func install(completion: @escaping (Result<Void, ExtensionFile.Failure>) -> Void) {
         guard let url = Config.extensionInstallURL else {
-            let a = NSAlert()
-            a.messageText = "Extension download isn't set up yet"
-            a.informativeText = "Developer build: in Zen or Firefox open about:debugging#/runtime/this-firefox, choose “Load Temporary Add-on…” and pick extension/manifest.json."
-            a.runModal()
+            completion(.failure(.init(message: "Developer build: in Zen or Firefox open about:debugging#/runtime/this-firefox, choose “Load Temporary Add-on…” and pick extension/manifest.json.")))
             return
         }
-        let ws = NSWorkspace.shared
-        for id in ["app.zen-browser.zen", "org.mozilla.firefox", "org.mozilla.firefoxdeveloperedition"] {
-            if let app = ws.urlForApplication(withBundleIdentifier: id) {
-                ws.open([url], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
-                return
+        Task {
+            do {
+                let file = try await ExtensionFile.download(from: url)
+                DispatchQueue.main.async {
+                    if ProcessInfo.processInfo.environment["LYRICS_EXTENSION_DRYRUN"] != nil {
+                        print("[extension] saved \(file.path)")        // tests: don't launch a browser
+                        completion(.success(()))
+                    } else {
+                        open(file, completion: completion)
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async { completion(.failure(.init(message: error.localizedDescription))) }
             }
         }
-        ws.open(url)
+    }
+
+    private static func open(_ file: URL, completion: @escaping (Result<Void, ExtensionFile.Failure>) -> Void) {
+        let ws = NSWorkspace.shared
+        let fallback = "The file is saved; in Zen or Firefox use Add-ons → ⚙ → Install Add-on From File."
+        guard let app = browserIDs.lazy.compactMap({ ws.urlForApplication(withBundleIdentifier: $0) }).first else {
+            ws.activateFileViewerSelecting([file])
+            completion(.failure(.init(message: "Couldn't find Zen or Firefox. " + fallback)))
+            return
+        }
+        ws.open([file], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration()) { _, error in
+            DispatchQueue.main.async {
+                if let error {
+                    ws.activateFileViewerSelecting([file])
+                    completion(.failure(.init(message: "Couldn't open it in the browser (\(error.localizedDescription)). " + fallback)))
+                } else {
+                    completion(.success(()))
+                }
+            }
+        }
+    }
+}
+
+enum InstallState: Equatable {
+    case idle, working, opened
+    case failed(String)
+
+    /// Debug: LYRICS_ONBOARD_INSTALL_STATE=working|opened|failed renders that state in snapshots.
+    static var initial: InstallState {
+        switch ProcessInfo.processInfo.environment["LYRICS_ONBOARD_INSTALL_STATE"] {
+        case "working": return .working
+        case "opened": return .opened
+        case "failed": return .failed("The extension file hasn't been published yet.")
+        default: return .idle
+        }
     }
 }
 
@@ -37,6 +79,7 @@ struct OnboardingView: View {
     @ObservedObject var controller: Controller
     var done: () -> Void
     @State private var loginOn = LoginItem.isEnabled
+    @State private var install = InstallState.initial
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -52,7 +95,21 @@ struct OnboardingView: View {
             step("The app is running", done: true, detail: "Look for ♪ in your menu bar.")
             step("Add the browser extension", done: controller.extensionConnected,
                  detail: controller.extensionConnected ? "Connected." : "Works in Zen and Firefox. Click Add when the browser asks.") {
-                Button("Install extension") { ExtensionInstaller.open() }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        Button(install == .working ? "Downloading…" : "Install extension", action: startInstall)
+                            .disabled(install == .working)
+                        if install == .opened {
+                            Text("Now click Add in your browser.").foregroundStyle(.secondary)
+                        }
+                    }
+                    if case .failed(let message) = install {
+                        Text(message).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                        if let page = Config.releasesPageURL {
+                            Button("Open download page") { NSWorkspace.shared.open(page) }
+                        }
+                    }
+                }
             }
             step("Play a song on YouTube", done: controller.songSeen,
                  detail: controller.songSeen ? "Lyrics are on their way. Hover them to move or fix timing." : "Any tab will do, even in the background.")
@@ -71,6 +128,16 @@ struct OnboardingView: View {
         }
         .padding(24)
         .frame(width: 500)
+    }
+
+    private func startInstall() {
+        install = .working
+        ExtensionInstaller.install { result in
+            switch result {
+            case .success: install = .opened
+            case .failure(let f): install = .failed(f.message)
+            }
+        }
     }
 
     private func step(_ title: String, done: Bool, detail: String) -> some View {
