@@ -1,6 +1,7 @@
 *.xpi
 .DS_Store
 .build/
+.claude/
 .swiftpm/
 app/.build/
 app/build/

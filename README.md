@@ -3,6 +3,8 @@
 Shows synced lyrics for whatever is playing on YouTube / YouTube Music as a floating
 macOS overlay (top-right by default), even while the browser is in the background.
 
+**[Latest release](https://github.com/iwandepe/lyrics-overlay/releases/latest)** · [Install](#install) · [How it works](#how-it-works) · [License](#license)
+
 <p align="center">
   <img src="docs/img/hero.gif" alt="Lyrics floating over a work window, then fixing sync by clicking a line" width="720">
 </p>
@@ -42,7 +44,7 @@ keeps its own clock so lines stay in time even when the tab is in the background
 
 ## Install
 
-Needs macOS 13 or newer. In Terminal:
+Needs macOS 13 or newer. Release notes and downloads are on the [Releases page](https://github.com/iwandepe/lyrics-overlay/releases/latest). In Terminal:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/iwandepe/lyrics-overlay/main/install.sh | bash
