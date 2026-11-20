@@ -66,15 +66,14 @@ struct LyricsView: View {
         }
         .padding(.horizontal, 12)
         .frame(height: headerHeight)
-        .opacity(controller.hovering ? 1 : 0)
         .background(
             ZStack {
+                Color(red: 0.075, green: 0.07, blue: 0.08)    // solid: lyrics never show through the bar
                 DragHandle()
-                // Keeps the controls legible over lyrics scrolling underneath.
-                LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .bottom)
-                    .allowsHitTesting(false)
             }
         )
+        .overlay(alignment: .bottom) { Rectangle().fill(.white.opacity(0.09)).frame(height: 1) }
+        .opacity(controller.hovering ? 1 : 0)                 // last, so the whole bar (not just its buttons) fades away
     }
 
     private func pill(_ label: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -129,19 +128,28 @@ struct LyricsView: View {
             }
             .scrollDisabled(controller.autoScroll)
             .frame(height: listHeight)
-            .mask(
-                LinearGradient(stops: [
-                    .init(color: .clear, location: 0),
-                    .init(color: .black, location: 0.14),
-                    .init(color: .black, location: 0.86),
-                    .init(color: .clear, location: 1),
-                ], startPoint: .top, endPoint: .bottom)
-            )
+            .mask(listMask)
             .onAppear { scroll(proxy, animated: false) }
             .onChange(of: clock.lines) { _ in scroll(proxy, animated: false) }
             .onChange(of: clock.currentIndex) { _ in if controller.autoScroll { scroll(proxy) } }
             .onChange(of: controller.autoScroll) { on in if on { scroll(proxy) } }
         }
+    }
+
+    /// Fades the lyrics out at the top and bottom. While the header is showing, the lyrics are fully
+    /// hidden behind its height (plus a small gap) and fade in just below it, so they never run into the bar.
+    private var listMask: some View {
+        let hovering = controller.hovering
+        let gap: CGFloat = 8     // clear space under the bar so no half-hidden glyphs peek out
+        let clearUntil = hovering ? (headerHeight + gap) / listHeight : 0
+        let solidFrom = hovering ? (headerHeight + gap + 22) / listHeight : 0.14
+        return LinearGradient(stops: [
+            .init(color: .clear, location: 0),
+            .init(color: .clear, location: clearUntil),
+            .init(color: .black, location: solidFrom),
+            .init(color: .black, location: 0.86),
+            .init(color: .clear, location: 1),
+        ], startPoint: .top, endPoint: .bottom)
     }
 
     private func scroll(_ proxy: ScrollViewProxy, animated: Bool = true) {

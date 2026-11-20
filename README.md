@@ -15,11 +15,30 @@ the lyrics follow it in a small floating window you can drag anywhere.
 - Fixes are remembered per song
 
 
+## How it works
+
+```mermaid
+flowchart LR
+    subgraph browser["Zen / Firefox"]
+        tab["YouTube tab<br/>content.js"] --> ext["Extension<br/>background.js"]
+    end
+
+    subgraph mac["Lyrics Overlay app (macOS)"]
+        server["Local server<br/>127.0.0.1:8765"] --> ctrl["Controller<br/>title cleanup + sync clock"]
+        ctrl --> overlay["Floating overlay"]
+    end
+
+    ext -- "title, position,<br/>play / pause" --> server
+    ctrl -- "artist, title, duration" --> lrclib[("LRCLIB<br/>lyrics database")]
+    lrclib -- "synced lyrics" --> ctrl
+    fixes[("Saved sync fixes<br/>one per song")] <--> ctrl
+
+    classDef accent fill:#ff8a3d,stroke:#b8511a,color:#1b1008
+    class overlay accent
 ```
-Zen tab (YouTube) ──content.js──▶ background.js ──WebSocket 127.0.0.1:8765──▶ macOS menu-bar app ──▶ overlay
-                                                                                     │
-                                                                                     └─▶ LRCLIB (lyrics)
-```
+
+The music keeps playing in your browser; the extension only reports what's playing. The app finds the lyrics,
+keeps its own clock so lines stay in time even when the tab is in the background, and draws the overlay.
 
 ## Install
 
@@ -30,7 +49,7 @@ curl -fsSL https://raw.githubusercontent.com/iwandepe/lyrics-overlay/main/instal
 ```
 
 This puts **Lyrics Overlay** in `/Applications` and opens it. A setup guide walks you through adding the
-browser extension (Zen or Firefox) and playing your first song. To remove everything:
+browser extension (Zen, or Firefox 140 or newer) and playing your first song. To remove everything:
 `curl -fsSL https://raw.githubusercontent.com/iwandepe/lyrics-overlay/main/install.sh | bash -s -- --uninstall`
 
 The app isn't notarized by Apple (that needs a paid developer account), which is why it's installed with
@@ -79,16 +98,6 @@ Every update is signed with a key only the maintainer holds, and the app refuses
 - Debug: `LYRICS_SNAPSHOT=/path.png LYRICS_SNAPSHOT_AT=5 .build/LyricsOverlay` renders the overlay to a PNG and exits
   (add `LYRICS_FORCE_HOVER=1` for the hovered look). `LYRICS_PORT` / `LYRICS_DATA_DIR` let a test copy run beside your real one.
 
-## Releasing (maintainer)
-1. The repo (`iwandepe/lyrics-overlay`) is set in `app/Sources/LyricsOverlay/Config.swift` (`githubRepo`) and
-   `install.sh` (`REPO`); keep them in sync if it ever moves.
-2. Bump `VERSION`, then run `./release.sh`. It runs the tests, builds the universal `.app`, zips it, writes the
-   checksum and the update signature, and prepares the extension zip in `dist/`. It publishes nothing.
-3. Sign the extension (free, unlisted) on addons.mozilla.org, rename the result to `lyrics-overlay-bridge.xpi`.
-4. Publish: `gh release create vX.Y.Z dist/LyricsOverlay.zip dist/LyricsOverlay.zip.sha256 dist/LyricsOverlay.zip.sig lyrics-overlay-bridge.xpi`.
+## License
 
-**Back up `~/.config/lyrics-overlay/signing.key`.** Its public half is embedded in every installed app
-(`UpdateCore.swift`). If the key is lost, installed copies can't verify new updates and people must reinstall.
-
-`app/tests/update-e2e.sh` rehearses the whole update flow locally (valid update, tampered download, wrong key,
-mismatched version) without GitHub. `app/make-icon.py` regenerates the icon.
+MIT. See [LICENSE](LICENSE).

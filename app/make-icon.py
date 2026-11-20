@@ -31,16 +31,16 @@ def note_font(size):
 def draw():
     mask = squircle_mask(824)
     # background gradient + glows
-    small = Image.new("RGB", (2, 2)); small.putdata([(26, 36, 84), (44, 40, 104), (60, 38, 98), (150, 64, 150)])
+    small = Image.new("RGB", (2, 2)); small.putdata([(54, 20, 8), (112, 40, 12), (150, 58, 16), (255, 140, 40)])
     body = small.resize((S, S), Image.BICUBIC).convert("RGBA")
-    glow(body, (int(S * .22), int(S * .8)), int(S * .22), (70, 130, 220, 120))
-    glow(body, (int(S * .8), int(S * .22)), int(S * .2), (230, 110, 170, 110))
+    glow(body, (int(S * .22), int(S * .8)), int(S * .22), (255, 150, 40, 130))
+    glow(body, (int(S * .8), int(S * .22)), int(S * .2), (255, 196, 90, 120))
     d = ImageDraw.Draw(body)
 
     # lyrics card
     cx, cy, w, h = S // 2, int(S * .53), int(560 * K), int(340 * K)
     card = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(card).rounded_rectangle([cx - w // 2, cy - h // 2, cx + w // 2, cy + h // 2], int(60 * K), fill=(8, 10, 24, 190))
+    ImageDraw.Draw(card).rounded_rectangle([cx - w // 2, cy - h // 2, cx + w // 2, cy + h // 2], int(60 * K), fill=(22, 10, 6, 195))
     body.alpha_composite(card)
     d = ImageDraw.Draw(body)
     x0 = cx - w // 2 + int(52 * K)
@@ -56,7 +56,7 @@ def draw():
     body.alpha_composite(sh.filter(ImageFilter.GaussianBlur(14 * K)))
     d = ImageDraw.Draw(body)
     d.ellipse([bx - br, by - br, bx + br, by + br], fill=(255, 255, 255, 255))
-    d.text((bx, by), "♪", font=note_font(int(150 * K)), fill=(96, 52, 150, 255), anchor="mm")
+    d.text((bx, by), "♪", font=note_font(int(150 * K)), fill=(222, 92, 18, 255), anchor="mm")
 
     # clip to squircle, add drop shadow
     clipped = Image.new("RGBA", (S, S), (0, 0, 0, 0)); clipped.paste(body, (0, 0), mask)

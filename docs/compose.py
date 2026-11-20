@@ -31,10 +31,10 @@ def glow(img, center, radius, color, S):
 def backdrop(S):
     # diagonal gradient
     small = Image.new("RGB", (2, 2))
-    small.putdata([(20, 30, 58), (38, 36, 82), (46, 34, 76), (84, 48, 98)])
+    small.putdata([(40, 20, 14), (92, 38, 16), (120, 52, 20), (236, 124, 42)])
     img = small.resize((W * S, H * S), Image.BICUBIC).convert("RGBA")
-    glow(img, (120, 430), 190, (70, 120, 200, 110), S)
-    glow(img, (760, 360), 220, (200, 90, 140, 90), S)
+    glow(img, (120, 430), 190, (255, 150, 50, 110), S)
+    glow(img, (760, 360), 220, (255, 190, 80, 95), S)
     d = ImageDraw.Draw(img)
 
     # menu bar
@@ -64,7 +64,7 @@ def backdrop(S):
     d.text((144 * S, 98 * S), "Project notes", font=font(12 * S, True), fill=(235, 235, 240, 255))
     d.text((318 * S, 98 * S), "♪  Morning Light (demo)", font=note_font(12 * S), fill=(150, 150, 165, 255))
     for k, h in enumerate((7, 11, 5)):                                       # little "playing" bars
-        rr(d, (470 + k * 6, 110 - h, 474 + k * 6, 110), 1, (110, 210, 150, 255), S)
+        rr(d, (470 + k * 6, 110 - h, 474 + k * 6, 110), 1, (255, 150, 60, 255), S)
 
     # fake document
     rr(d, (60, 148, 280, 164), 4, (214, 214, 224, 255), S)
@@ -75,8 +75,8 @@ def backdrop(S):
             y += 20
         y += 14
     rr(d, (60, y, 560, y + 74), 8, (22, 22, 28, 255), S)                     # code block
-    for i, (indent, w, c) in enumerate(((0, 120, (130, 170, 255)), (24, 210, (200, 200, 215)),
-                                         (24, 160, (150, 220, 160)), (0, 40, (130, 170, 255)))):
+    for i, (indent, w, c) in enumerate(((0, 120, (255, 160, 80)), (24, 210, (214, 204, 196)),
+                                         (24, 160, (255, 206, 120)), (0, 40, (255, 160, 80)))):
         rr(d, (76 + indent, y + 12 + i * 15, 76 + indent + w, y + 19 + i * 15), 3, c + (255,), S)
     return img
 
